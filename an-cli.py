@@ -129,30 +129,33 @@ def lsm(*, xs: list[float], y: list[float], r: float, v: bool = False):
     console = Console()
 
     n = len(xs)
+    # Numpy arrays are immutable, but faster than a normal list
     xs = np.array(xs, dtype=float)
     y = np.array(y, dtype=float)
-    xy = []
-    xsquared = []
+    xy, x_squared = [], []
 
+    # Calculate intermediate values
     for i in range(n):
         xy.append(xs[i] * y[i])
-        xsquared.append(np.pow(xs[i], 2))
+        x_squared.append(np.pow(xs[i], 2))
 
     xy = np.array(xy, dtype=float)
-    xsquared = np.array(xsquared, dtype=float)
+    x_squared = np.array(x_squared, dtype=float)
 
-    xsum = np.sum(xs)
-    ysum = np.sum(y)
-    xysum = np.sum(xy)
-    xsquaredsum = np.sum(xsquared)
+    # Calculate sums for all arrays
+    x_sum = np.sum(xs)
+    y_sum = np.sum(y)
+    xy_sum = np.sum(xy)
+    x_squared_sum = np.sum(x_squared)
 
-    m = (n * xysum - xsum * ysum) / (n * xsquaredsum - np.pow(xsum, 2))
-
-    b = (ysum - m * xsum) / n
-
-    result = m * r + b
+    # y = mx + b
+    m = (n * xy_sum - x_sum * y_sum) / (n * x_squared_sum - np.pow(x_sum, 2))
+    b = (y_sum - m * x_sum) / n
+    result = m * r + b  # Estimate y for the given x-value (r)
 
     if v:
+        # Detailed output
+
         console.rule("[bold white]DETAILED RESULTS[/bold white]")
 
         table = Table(show_header=True, header_style="bold white")
@@ -168,19 +171,20 @@ def lsm(*, xs: list[float], y: list[float], r: float, v: bool = False):
                 f"{xs[i]:.9f}",
                 f"{y[i]:.9f}",
                 f"{xy[i]:.9f}",
-                f"{xsquared[i]:.9f}",
+                f"{x_squared[i]:.9f}",
             )
 
         table.add_section()
         table.add_row(
             "[bold blue]∑[/bold blue]",
-            f"{xsum:.9f}",
-            f"{ysum:.9f}",
-            f"{xysum:.9f}",
-            f"{xsquaredsum:.9f}",
+            f"{x_sum:.9f}",
+            f"{y_sum:.9f}",
+            f"{xy_sum:.9f}",
+            f"{x_squared_sum:.9f}",
         )
         console.print(table)
 
+        # Print m, b, and result
         console.print(f"\n[bold blue]m ->[/bold blue] {m}")
         console.print(f"[bold blue]b ->[/bold blue] {b}")
         console.print(
