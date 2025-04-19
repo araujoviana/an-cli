@@ -31,7 +31,7 @@ def error(message: str):
 
 
 @arguably.command
-def newton(*, estimate: float, function: str, criterion: str = "function", tolerance: float = 0.001, max_iter: int = 100, v: bool = False, p: bool = True):
+def newton(*, estimate: float, function: str, criterion: str = "function", tolerance: float = 0.001, max_iter: int = 100, v: bool = False, p: bool = False):
     """
     Approximates the root of the equation `f` using the Newton-Raphson method, based on the provided tolerance `t`.
 
@@ -178,6 +178,22 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
 
     else:
         console.print(f"[bold magenta]Result: [/bold magenta]{result}")
+
+    # Plot for data points and regression line
+    if p:
+        x_vals = np.linspace(current_estimate - 5, current_estimate + 5, 400)
+        y_vals = expr_f(x_vals)
+
+        plt.plot(x_vals, y_vals, label=f"f(x) = {expr}", color='blue')
+        plt.axhline(0, color='black', linewidth=0.5)
+        plt.scatter(p_n_one, f_p_n_one, color='red', label="Estimates")
+        plt.scatter([result], [expr_f(result)], color='green', label=f"Root ≈ {result:.4f}", marker='x')
+        plt.xlabel("x")
+        plt.ylabel("f(x)")
+        plt.title("Newton-Raphson Method")
+        plt.legend()
+        plt.grid(True)
+        plt.show()
 
 
 
