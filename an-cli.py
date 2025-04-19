@@ -18,7 +18,6 @@ def error(message: str):
 
 
 """ TODO 
-2. Newton
 3. Bissecção
 
 4. Derivadas e taxas de variação
@@ -31,9 +30,154 @@ def error(message: str):
 
 
 @arguably.command
+def bisection(*, a: float, b: float, function: str, criterion: str = "function", tolerance: float = 0.001,
+              max_iter: int = 100, v: bool = False, p: bool = False):
+    """
+    Approximates the root of the equation `f` using the Newton-Raphson method.
+
+    Args:
+      a: [-a/] starting estimate
+      b: [-b/] ending estimate
+      function: [-f/--function] function for finding the root
+      criterion: [-c/--criteria] stopping criterion to be used for stopping, can only be: "absolute", "relative" or "function"
+      tolerance: [-t/--tolerance] tolerance value that determines when to stop the iteration
+      max_iter: [-m/--max] maximum number of iterations
+      p: [-p/--plot] plot points in matplotlib graph
+      v: [-v/--verbose] print calculation steps in detail
+    """
+
+    console = Console()
+
+    x = smp.symbols('x')
+    expr = smp.sympify(function)
+    expr_f = smp.lambdify([x], expr)
+    p_n = 0
+    current_p_n = (a + b) / 2
+
+    a_list, b_list, p_list, f_p_list = [], [], [], []
+
+    n_iter = 0
+
+    match criterion:
+        case "absolute":
+            while np.abs(current_p_n - p_n) > tolerance and n_iter <= max_iter:
+                p_n = current_p_n
+                f_a = expr_f(a)
+                f_p = expr_f(p_n)
+
+                a_list.append(a)
+                b_list.append(b)
+                p_list.append(current_p_n)
+                f_p_list.append(f_p)
+
+                if f_a * f_p < 0:
+                    b = p_n
+                else:
+                    a = p_n
+
+                current_p_n = (a + b) / 2
+                n_iter += 1
+
+
+        case "relative":
+            while np.abs(current_p_n - p_n) / np.abs(current_p_n) > tolerance and n_iter <= max_iter:
+                p_n = current_p_n
+                f_a = expr_f(a)
+                f_p = expr_f(p_n)
+
+                a_list.append(a)
+                b_list.append(b)
+                p_list.append(current_p_n)
+                f_p_list.append(f_p)
+
+                if f_a * f_p < 0:
+                    b = p_n
+                else:
+                    a = p_n
+
+                current_p_n = (a + b) / 2
+                n_iter += 1
+
+        case "function":
+            while np.abs(expr_f(current_p_n)) > tolerance and n_iter <= max_iter:
+                p_n = current_p_n
+                f_a = expr_f(a)
+                f_p = expr_f(p_n)
+
+                a_list.append(a)
+                b_list.append(b)
+                p_list.append(current_p_n)
+                f_p_list.append(f_p)
+
+                if f_a * f_p < 0:
+                    b = p_n
+                else:
+                    a = p_n
+
+                current_p_n = (a + b) / 2
+                n_iter += 1
+
+    # this row contains the result
+    a_list.append(a)
+    b_list.append(b)
+    p_list.append(current_p_n)
+    f_p_list.append(f_p)
+
+    result = current_p_n # for readability
+
+    if v:
+        # Detailed output
+        console.print("\n")
+        console.rule("[bold white]DETAILED RESULTS[/bold white]")
+
+        table = Table(show_header=True, header_style="bold white")
+        table.add_column("n", style="cyan", justify="right")
+        table.add_column("a_n", style="green", justify="right")
+        table.add_column("b_n", style="magenta", justify="right")
+        table.add_column("p_n", style="yellow", justify="right")
+        table.add_column("f(p_n)", style="cyan", justify="right")
+
+        for i in range(len(a_list)):
+            table.add_row(
+                f"{i+1}",
+                f"{a_list[i]:.9f}",
+                f"{b_list[i]:.9f}",
+                f"{p_list[i]:.9f}",
+                f"{f_p_list[i]:.9f}",
+            )
+
+        console.print(table)
+
+        if n_iter > max_iter:
+            console.print("[red]Maximum number of iterations reached![/red]")
+
+        console.print(f"[bold green]f(x) = [/bold green]{expr}\n")
+        console.print(f"[bold green]|f(p_n)| = [/bold green]{np.abs(f_p_list[-1])}\n")
+        console.print(f"[bold green]Root = [/bold green]{result}")
+    else:
+        console.print(f"[bold magenta]Result: [/bold magenta]{result}")
+
+    # plot
+    if p:
+        x_vals = np.linspace(result - 5, result + 5, 400)
+        y_vals = expr_f(x_vals)
+
+        plt.plot(x_vals, y_vals, label=f"f(x) = {expr}", color='blue')
+        plt.axhline(0, color='black', linewidth=0.5)
+        plt.scatter(p_list, f_p_list, color='red', label="f(p_n)")
+        plt.scatter([result], [expr_f(result)], color='green', label=f"Root ≈ {result:.4f}", marker='x')
+        plt.xlabel("x")
+        plt.ylabel("f(x)")
+        plt.title("Bisection Method")
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+
+@arguably.command
 def newton(*, estimate: float, function: str, criterion: str = "function", tolerance: float = 0.001, max_iter: int = 100, v: bool = False, p: bool = False):
     """
-    Approximates the root of the equation `f` using the Newton-Raphson method, based on the provided tolerance `t`.
+    Approximates the root of the equation `f` using the Newton-Raphson method.
 
     Args:
       estimate: [-e/--estimate] starting estimate for the root
@@ -56,7 +200,7 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
     # REVIEW variable names
     p_n_one, f_p_n_one, f_deriv_p_n_one, f_difference, p_n, f_p_n, epsilon = [], [], [], [], [], [], []
 
-    # Initial function calls
+    # initial function calls
     f_e = expr_f(estimate)
     f_derivative_e = expr_derivative_f(estimate)
 
@@ -73,7 +217,7 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
     n_iter = 0
     match criterion:
         case "absolute":
-            while np.abs(current_estimate - estimate) >= tolerance and n_iter <= max_iter:
+            while np.abs(current_estimate - estimate) > tolerance and n_iter <= max_iter:
                 estimate = current_estimate # Previous estimate
 
                 f_e = expr_f(estimate)
@@ -94,7 +238,7 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
                     
 
         case "relative":
-            while np.abs(current_estimate - estimate) / np.abs(current_estimate) >= tolerance and n_iter <= max_iter:
+            while np.abs(current_estimate - estimate) / np.abs(current_estimate) > tolerance and n_iter <= max_iter:
                 estimate = current_estimate # Previous estimate
 
                 f_e = expr_f(estimate)
@@ -113,7 +257,7 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
                     f_p_n.append(np.abs(current_estimate - estimate) / np.abs(current_estimate))
 
         case "function":
-            while np.abs(expr_f(current_estimate)) >= tolerance and n_iter <= max_iter:
+            while np.abs(expr_f(current_estimate)) > tolerance and n_iter <= max_iter:
                 estimate = current_estimate  # Previous estimate
 
                 f_e = expr_f(estimate)
@@ -160,6 +304,9 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
 
         console.print(table)
 
+        if n_iter > max_iter:
+            console.print("[red]Maximum number of iterations reached![/red]")
+
         console.print(f"[bold green]f(x) = [/bold green]{expr}\n")
 
         # Decompose the expression into terms
@@ -179,7 +326,7 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
     else:
         console.print(f"[bold magenta]Result: [/bold magenta]{result}")
 
-    # Plot for data points and regression line
+    # plot
     if p:
         x_vals = np.linspace(current_estimate - 5, current_estimate + 5, 400)
         y_vals = expr_f(x_vals)
