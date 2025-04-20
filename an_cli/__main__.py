@@ -749,10 +749,14 @@ def lsm(*, xs: list[float], y: list[float], r: float, v: bool = False, p: bool =
         plt.show()
 
 
-if __name__ == "__main__":
+def main():
     arguably.run()
 
-# Emacs stuff
+
+if __name__ == "__main__":
+    main()
+
+# Emacs stuff ~~~
 # Local Variables:
 # jinx-languages: "en_US"
 # End:
