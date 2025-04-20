@@ -75,7 +75,7 @@ def simpson(
         console.print(f"[bold magenta]Result: [/bold magenta]{result:.9g}")
 
     else:
-        console.print(f"[bold magenta]Result: [/bold magenta]{result:.9g}")
+        console.print(result)
 
 
 # REVIEW bad grammar @ docstring
@@ -147,7 +147,7 @@ def differentiate(
         )
 
     else:
-        console.print(f"[bold magenta]Result: [/bold magenta]{result:.9g}")
+        console.print(result)
 
 
 @arguably.command
@@ -288,7 +288,7 @@ def bisection(
         console.print(f"[bold green]|f(p_n)| = [/bold green]{np.abs(f_p_list[-1])}\n")
         console.print(f"[bold green]Root = [/bold green]{result}")
     else:
-        console.print(f"[bold magenta]Result: [/bold magenta]{result}")
+        console.print(result)
 
     # plot
     if p:
@@ -493,7 +493,7 @@ def newton(
         console.print(f"[bold magenta]Root: [/bold magenta]{result:.9g}")
 
     else:
-        console.print(f"[bold magenta]Result: [/bold magenta]{result}")
+        console.print(result)
 
     # plot
     if p:
@@ -729,7 +729,7 @@ def lsm(*, xs: list[float], y: list[float], r: float, v: bool = False, p: bool =
             f"\n[i]y = mx + b[/i] = {m} * {r} + {b} = [underline bold green]{result}[/underline bold green]"
         )
     else:
-        console.print(f"[bold magenta]Result: [/bold magenta]{result}")
+        console.print(result)
 
     # Plot for data points and regression line
     if p:
@@ -755,8 +755,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# Emacs stuff ~~~
-# Local Variables:
-# jinx-languages: "en_US"
-# End:
