@@ -1,6 +1,13 @@
+# Ignore build output directories
 dist/
 .venv/
 an_cli.egg-info/
-uv.lock
+
+# Ignore lock files
 uv.lock/
+
+# Ignore IDE config files
 .idea/
+
+# Ignore temporary README files
+README.tmp.md
