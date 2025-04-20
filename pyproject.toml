@@ -15,6 +15,12 @@ dependencies = [
 [project.scripts]
 an-cli = "an_cli.__main__:main"
 
+[project.optional-dependencies]
+testing = [
+    "mock>=5.2.0",
+    "pytest>=8.3.5",
+]
+
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"

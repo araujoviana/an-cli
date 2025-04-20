@@ -1,11 +1,6 @@
-# Logic
 import numpy as np
 import sympy as smp
-
-# Plotting
 import matplotlib.pyplot as plt
-
-# Formatting
 import arguably
 from rich.console import Console
 from rich.table import Table
@@ -24,7 +19,6 @@ def error(message: str):
 
 6. Quadrature-based method
 7. Trapezoidal-based method
-8. Simpson-based method
 """
 
 
@@ -37,7 +31,7 @@ def simpson(
     v: bool = False,
 ):
     """
-    Finds an approximation of the integral of the function `f`.
+    Finds an approximation of the integral of the function `f`. WARNING: May have a small discrepancy due to floating-point precision errors.
 
     Args:
       a: [-a/] starting estimate
@@ -76,6 +70,7 @@ def simpson(
 
     else:
         console.print(result)
+        return result
 
 
 # REVIEW bad grammar @ docstring
@@ -102,52 +97,80 @@ def differentiate(
     console = Console()
     x = smp.symbols("x")
 
-    expr = smp.sympify(function)
-    expr_f = smp.lambdify([x], expr)
-    expr_deriv = smp.diff(expr, x)
-    expr_deriv_r = smp.lambdify([x], expr_deriv)
+    # HACK Placeholder values
+    expr = x
+    expr_f = lambda a: a
+    expr_deriv_r = lambda a: a
+    expr_deriv = None
+    expr_deriv_f = None
 
-    expr_deriv_f = (
-        0  # this will always become the result, but we'll define it for my lsp's sake
-    )
-    expr_deriv_s = x  # same thing
+    try:
+        expr = smp.sympify(function)
+    except (smp.SympifyError, TypeError) as e:
+        error(f"Could not parse function '{function}': {e}")
+
+    try:
+        expr_f = smp.lambdify([x], expr, modules="numpy")  # Use numpy
+    except Exception as e:
+        error(f"Could not create numerical function from '{expr}': {e}")
+
+    try:
+        expr_deriv = smp.diff(expr, x)
+        expr_deriv_r = smp.lambdify([x], expr_deriv, modules="numpy")  # Use numpy
+    except Exception as e:
+        error(f"Could not differentiate function '{expr}': {e}")
+
+    expr_deriv_f = 0.0
+    expr_deriv_s = smp.S(0)
 
     if h <= 0:
         error("h cannot be less or equal to zero.")
 
-    match method:
-        case "forward":
-            expr_deriv_f = (expr_f(X + h) - expr_f(X)) / h
-            expr_deriv_s = (expr_f(x + h) - expr_f(x)) / h
-        case "backward":
-            expr_deriv_f = (expr_f(X) - expr_f(X - h)) / h
-            expr_deriv_s = (expr_f(x + h) - expr_f(x)) / h
-        case "centered":
-            expr_deriv_f = (expr_f(X + h) - expr_f(X - h)) / (2 * h)
-            expr_deriv_s = (expr_f(x + h) - expr_f(x)) / h
-        case _:
-            error("Invalid method.")
+    try:
+        match method:
+            case "forward":
+                expr_deriv_f = (expr_f(X + h) - expr_f(X)) / h
+                expr_deriv_s = (expr.subs(x, x + h) - expr) / h
+            case "backward":
+                expr_deriv_f = (expr_f(X) - expr_f(X - h)) / h
+                expr_deriv_s = (expr - expr.subs(x, x - h)) / h
+            case "centered":
+                expr_deriv_f = (expr_f(X + h) - expr_f(X - h)) / (2 * h)
+                expr_deriv_s = (expr.subs(x, x + h) - expr.subs(x, x - h)) / (2 * h)
+            case _:
+                error("Invalid method.")
+    except Exception as e:
+        error(f"Error evaluating function/derivative near X={X} with h={h}: {e}")
 
     result = expr_deriv_f
 
     if v:
-        # Detailed output
         console.print("\n")
         console.rule("[bold white]DETAILED RESULTS[/bold white]")
 
-        console.print(f"[bold green]f'({X}) = [/bold green]{expr_deriv_s}")
+        console.print(
+            f"[bold green]Symbolic Approx. f'({x}) = [/bold green]{smp.simplify(expr_deriv_s)}"
+        )
 
         console.print(f"[bold magenta]f(x) = [/bold magenta]{expr}")
         console.print(f"[bold magenta]f'(x) from sympy = [/bold magenta]{expr_deriv}")
-        console.print(
-            f"[bold magenta]f'({X}) from sympy: [/bold magenta]{expr_deriv_r(X):.9g}"
-        )
+        try:
+            actual_deriv_val = expr_deriv_r(X)
+            console.print(
+                f"[bold magenta]f'({X}) from sympy: [/bold magenta]{actual_deriv_val:.9g}"
+            )
+        except Exception as e:
+            console.print(
+                f"[bold red]Could not evaluate sympy derivative at {X}: {e}[/bold red]"
+            )
+
         console.print(
             f"[bold magenta]f'({X}) from {method} differencing: [/bold magenta]{result:.9g}"
         )
 
     else:
-        console.print(result)
+        console.print(f"{result:.9g}")  # Format non-verbose output
+        return result
 
 
 @arguably.command
@@ -179,87 +202,113 @@ def bisection(
     console = Console()
 
     x = smp.symbols("x")
-    expr = smp.sympify(function)
-    expr_f = smp.lambdify([x], expr)
-    p_n = 0
-    f_p = 0
+    try:
+        expr = smp.sympify(function)
+        expr_f = smp.lambdify([x], expr, modules="numpy")  # Use numpy
+    except (smp.SympifyError, TypeError) as e:
+        error(f"Could not parse function '{function}': {e}")
+    except Exception as e:
+        error(f"Could not create numerical function from '{expr}': {e}")
+
+    # HACK Placeholder values
+    expr = x
+    expr_f = lambda a: a
+
+    f_a_init = expr_f(a)
+    f_b_init = expr_f(b)
+
+    p_n = 0  # Keep track of the previous p_n for absolute/relative criteria
+    f_p = 0  # Store f(p_n) for the table
     current_p_n = (a + b) / 2
 
     a_list, b_list, p_list, f_p_list = [], [], [], []
 
     n_iter = 0
 
-    match criterion:
-        case "absolute":
-            while np.abs(current_p_n - p_n) > tolerance and n_iter <= max_iter:
-                p_n = current_p_n
-                f_a = expr_f(a)
-                f_p = expr_f(p_n)
+    try:
+        match criterion:
+            case "absolute":
+                while np.abs(current_p_n - p_n) > tolerance and n_iter < max_iter:
+                    p_n = current_p_n
+                    f_a = expr_f(a)
+                    f_p = expr_f(p_n)
 
-                a_list.append(a)
-                b_list.append(b)
-                p_list.append(current_p_n)
-                f_p_list.append(f_p)
+                    a_list.append(a)
+                    b_list.append(b)
+                    p_list.append(current_p_n)
+                    f_p_list.append(f_p)
 
-                if f_a * f_p < 0:
-                    b = p_n
-                else:
-                    a = p_n
+                    if np.sign(f_a) != np.sign(f_p):
+                        b = p_n
+                    else:
+                        a = p_n
 
-                current_p_n = (a + b) / 2
-                n_iter += 1
+                    current_p_n = (a + b) / 2
+                    n_iter += 1
 
-        case "relative":
-            while (
-                np.abs(current_p_n - p_n) / np.abs(current_p_n) > tolerance
-                and n_iter <= max_iter
-            ):
-                p_n = current_p_n
-                f_a = expr_f(a)
-                f_p = expr_f(p_n)
+            case "relative":
+                # Initialize p_n differently for the first iteration relative check
+                p_n = current_p_n + 2 * tolerance  # Ensure first iteration runs
+                while (
+                    np.abs(current_p_n)
+                    > 1e-12  # Avoid division by zero if root is near 0
+                    and np.abs(current_p_n - p_n) / np.abs(current_p_n) > tolerance
+                    and n_iter < max_iter
+                ):
+                    p_n = current_p_n
+                    f_a = expr_f(a)
+                    f_p = expr_f(p_n)
 
-                a_list.append(a)
-                b_list.append(b)
-                p_list.append(current_p_n)
-                f_p_list.append(f_p)
+                    a_list.append(a)
+                    b_list.append(b)
+                    p_list.append(current_p_n)
+                    f_p_list.append(f_p)
 
-                if f_a * f_p < 0:
-                    b = p_n
-                else:
-                    a = p_n
+                    if np.sign(f_a) != np.sign(f_p):
+                        b = p_n
+                    else:
+                        a = p_n
 
-                current_p_n = (a + b) / 2
-                n_iter += 1
+                    current_p_n = (a + b) / 2
+                    n_iter += 1
 
-        case "function":
-            while np.abs(expr_f(current_p_n)) > tolerance and n_iter <= max_iter:
-                p_n = current_p_n
-                f_a = expr_f(a)
-                f_p = expr_f(p_n)
+            case "function":
+                while np.abs(expr_f(current_p_n)) > tolerance and n_iter < max_iter:
+                    p_n = current_p_n  # For table consistency, store the p we are evaluating
+                    f_a = expr_f(a)
+                    f_p = expr_f(p_n)
 
-                a_list.append(a)
-                b_list.append(b)
-                p_list.append(current_p_n)
-                f_p_list.append(f_p)
+                    a_list.append(a)
+                    b_list.append(b)
+                    p_list.append(current_p_n)
+                    f_p_list.append(f_p)
 
-                if f_a * f_p < 0:
-                    b = p_n
-                else:
-                    a = p_n
+                    if np.sign(f_a) != np.sign(f_p):
+                        b = p_n
+                    else:
+                        a = p_n
 
-                current_p_n = (a + b) / 2
-                n_iter += 1
+                    current_p_n = (a + b) / 2
+                    n_iter += 1
+            case _:
+                error(
+                    f"Invalid criterion '{criterion}'. Use 'absolute', 'relative', or 'function'."
+                )
 
-    # this row contains the result
-    a_list.append(a)
-    b_list.append(b)
-    p_list.append(current_p_n)
-    f_p_list.append(f_p)
+        # Append the last iteration's state for the table/result
+        # Need to calculate f(p) for the final current_p_n
+        f_p_final = expr_f(current_p_n)
+        a_list.append(a)
+        b_list.append(b)
+        p_list.append(current_p_n)
+        f_p_list.append(f_p_final)  # Use the f(p) of the final result
 
-    result = current_p_n  # for readability
+    except Exception as e:
+        error(f"Error during bisection iteration: {e}")
+
+    result = current_p_n
 
     if v:
-        # Detailed output
         console.print("\n")
         console.rule("[bold white]DETAILED RESULTS[/bold white]")
 
@@ -270,6 +319,7 @@ def bisection(
         table.add_column("p_n", style="yellow", justify="right")
         table.add_column("f(p_n)", style="cyan", justify="right")
 
+        # Display n from 1 up to n_iter + 1 (for the final result row)
         for i in range(len(a_list)):
             table.add_row(
                 f"{i+1}",
@@ -281,36 +331,56 @@ def bisection(
 
         console.print(table)
 
-        if n_iter > max_iter:
-            console.print("[red]Maximum number of iterations reached![/red]")
+        if n_iter >= max_iter:
+            console.print(
+                f"[yellow]Warning: Maximum number of iterations ({max_iter}) reached.[/yellow]"
+            )
 
-        console.print(f"[bold green]f(x) = [/bold green]{expr}\n")
-        console.print(f"[bold green]|f(p_n)| = [/bold green]{np.abs(f_p_list[-1])}\n")
-        console.print(f"[bold green]Root = [/bold green]{result}")
+        console.print(f"\n[bold green]f(x) = [/bold green]{expr}")
+        console.print(
+            f"[bold green]|f(p_final)| = [/bold green]{np.abs(f_p_list[-1]):.9g}"
+        )
+        console.print(
+            f"[bold green]Stopping Criterion Met: [/bold green]{criterion} <= {tolerance:.4g}"
+        )
+        console.print(f"[bold green]Root = [/bold green]{result:.9g}")
     else:
         console.print(result)
+        return result
 
-    # plot
     if p:
-        x_vals = np.linspace(result - 5, result + 5, 400)
-        y_vals = expr_f(x_vals)
+        try:
+            x_vals = np.linspace(
+                min(a_list[0], b_list[0]) - 1, max(a_list[0], b_list[0]) + 1, 400
+            )
+            y_vals = expr_f(x_vals)
 
-        plt.plot(x_vals, y_vals, label=f"f(x) = {expr}", color="blue")
-        plt.axhline(0, color="black", linewidth=0.5)
-        plt.scatter(p_list, f_p_list, color="red", label="f(p_n)")
-        plt.scatter(
-            [result],
-            [expr_f(result)],
-            color="green",
-            label=f"Root ≈ {result:.4f}",
-            marker="x",
-        )
-        plt.xlabel("x")
-        plt.ylabel("f(x)")
-        plt.title("Bisection Method")
-        plt.legend()
-        plt.grid(True)
-        plt.show()
+            plt.plot(x_vals, y_vals, label=f"f(x) = {expr}", color="blue")
+            plt.axhline(0, color="black", linewidth=0.5)
+            # Plot pn values from the table
+            plt.scatter(
+                p_list[:-1], f_p_list[:-1], color="red", label="f(p_n) Iterates", s=20
+            )  # Smaller points for iterates
+            plt.scatter(
+                [result],
+                [f_p_list[-1]],  # f(result)
+                color="green",
+                label=f"Final Root ≈ {result:.4f}",
+                marker="x",
+                s=100,  # Larger marker for result
+            )
+            plt.xlabel("x")
+            plt.ylabel("f(x)")
+            plt.title("Bisection Method")
+            plt.legend()
+            plt.grid(True)
+            plt.ylim(
+                min(f_p_list) - 1 if f_p_list else -1,
+                max(f_p_list) + 1 if f_p_list else 1,
+            )  # Adjust ylim based on points
+            plt.show()
+        except Exception as e:
+            error(f"Error generating plot: {e}")
 
 
 @arguably.command
@@ -494,6 +564,7 @@ def newton(
 
     else:
         console.print(result)
+        return result
 
     # plot
     if p:
@@ -624,9 +695,8 @@ def lagrange(
         console.print(f"[bold magenta]P({r})[/bold magenta] = {result}")
 
     else:
-        console.print(f"[bold magenta]P(x)[/bold magenta] -> {px_simplified}")
-        console.print(f"[bold magenta]P(x) rational[/bold magenta] -> {px_rational}")
-        console.print(f"[bold magenta]P({r})[/bold magenta] -> {result}")
+        console.print(result)
+        return result
 
     # Plot for data points and regression line
     if p:
@@ -648,7 +718,14 @@ def lagrange(
 
 
 @arguably.command
-def lsm(*, xs: list[float], y: list[float], r: float, v: bool = False, p: bool = False):
+def lsm(
+    *,
+    xs: list[float],
+    y: list[float],
+    r: float,
+    v: bool = False,
+    p: bool = False,
+):
     """
     Computes the linear least squares estimation for a given point `r`.
 
@@ -730,6 +807,7 @@ def lsm(*, xs: list[float], y: list[float], r: float, v: bool = False, p: bool =
         )
     else:
         console.print(result)
+        return result
 
     # Plot for data points and regression line
     if p:
