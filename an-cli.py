@@ -18,7 +18,6 @@ def error(message: str):
 
 
 """ TODO 
-3. Bissecção
 
 4. Derivadas e taxas de variação
 5. Aprox linear e quadrática
@@ -29,11 +28,92 @@ def error(message: str):
 """
 
 
+# REVIEW bad grammar @ docstring
 @arguably.command
-def bisection(*, a: float, b: float, function: str, criterion: str = "function", tolerance: float = 0.001,
-              max_iter: int = 100, v: bool = False, p: bool = False):
+def differentiate(
+    *,
+    X: float,
+    h: float,
+    function: str,
+    method: str = "centered",
+    v: bool = False,
+):
     """
-    Approximates the root of the equation `f` using the Newton-Raphson method.
+    Finds an approximation of the first derivative of a number `x`
+
+    Args:
+      X: [-x/] value to find the derivative
+      h: [-H/] increment between points in the function (UPPERCASE H!!)
+      function: [-f/--function] function to derive
+      method: [-m/--method] differencing method, can only be: "forward", "backward", "centered"
+      v: [-v/--verbose] print calculation steps in detail
+    """
+
+    console = Console()
+    x = smp.symbols("x")
+
+    expr = smp.sympify(function)
+    expr_f = smp.lambdify([x], expr)
+    expr_deriv = smp.diff(expr, x)
+    expr_deriv_r = smp.lambdify([x], expr_deriv)
+
+    expr_deriv_f = (
+        0  # this will always become the result, but we'll define it for my lsp's sake
+    )
+    expr_deriv_s = x  # same thing
+
+    if h <= 0:
+        error("h cannot be less or equal to zero.")
+
+    match method:
+        case "forward":
+            expr_deriv_f = (expr_f(X + h) - expr_f(X)) / h
+            expr_deriv_s = (expr_f(x + h) - expr_f(x)) / h
+        case "backward":
+            expr_deriv_f = (expr_f(X) - expr_f(X - h)) / h
+            expr_deriv_s = (expr_f(x + h) - expr_f(x)) / h
+        case "centered":
+            expr_deriv_f = (expr_f(X + h) - expr_f(X - h)) / (2 * h)
+            expr_deriv_s = (expr_f(x + h) - expr_f(x)) / h
+        case _:
+            error("Invalid method.")
+
+    result = expr_deriv_f
+
+    if v:
+        # Detailed output
+        console.print("\n")
+        console.rule("[bold white]DETAILED RESULTS[/bold white]")
+
+        console.print(f"[bold green]f'({X}) = [/bold green]{expr_deriv_s}")
+
+        console.print(f"[bold magenta]f(x) = [/bold magenta]{expr}")
+        console.print(f"[bold magenta]f'(x) from sympy = [/bold magenta]{expr_deriv}")
+        console.print(
+            f"[bold magenta]f'({X}) from sympy: [/bold magenta]{expr_deriv_r(X):.9g}"
+        )
+        console.print(
+            f"[bold magenta]f'({X}) from {method} differencing: [/bold magenta]{result:.9g}"
+        )
+
+    else:
+        console.print(f"[bold magenta]Result: [/bold magenta]{result:.9g}")
+
+
+@arguably.command
+def bisection(
+    *,
+    a: float,
+    b: float,
+    function: str,
+    criterion: str = "function",
+    tolerance: float = 0.001,
+    max_iter: int = 100,
+    v: bool = False,
+    p: bool = False,
+):
+    """
+    Approximates the root of the equation `f` using the Bisection method.
 
     Args:
       a: [-a/] starting estimate
@@ -48,10 +128,11 @@ def bisection(*, a: float, b: float, function: str, criterion: str = "function",
 
     console = Console()
 
-    x = smp.symbols('x')
+    x = smp.symbols("x")
     expr = smp.sympify(function)
     expr_f = smp.lambdify([x], expr)
     p_n = 0
+    f_p = 0
     current_p_n = (a + b) / 2
 
     a_list, b_list, p_list, f_p_list = [], [], [], []
@@ -78,9 +159,11 @@ def bisection(*, a: float, b: float, function: str, criterion: str = "function",
                 current_p_n = (a + b) / 2
                 n_iter += 1
 
-
         case "relative":
-            while np.abs(current_p_n - p_n) / np.abs(current_p_n) > tolerance and n_iter <= max_iter:
+            while (
+                np.abs(current_p_n - p_n) / np.abs(current_p_n) > tolerance
+                and n_iter <= max_iter
+            ):
                 p_n = current_p_n
                 f_a = expr_f(a)
                 f_p = expr_f(p_n)
@@ -123,7 +206,7 @@ def bisection(*, a: float, b: float, function: str, criterion: str = "function",
     p_list.append(current_p_n)
     f_p_list.append(f_p)
 
-    result = current_p_n # for readability
+    result = current_p_n  # for readability
 
     if v:
         # Detailed output
@@ -162,10 +245,16 @@ def bisection(*, a: float, b: float, function: str, criterion: str = "function",
         x_vals = np.linspace(result - 5, result + 5, 400)
         y_vals = expr_f(x_vals)
 
-        plt.plot(x_vals, y_vals, label=f"f(x) = {expr}", color='blue')
-        plt.axhline(0, color='black', linewidth=0.5)
-        plt.scatter(p_list, f_p_list, color='red', label="f(p_n)")
-        plt.scatter([result], [expr_f(result)], color='green', label=f"Root ≈ {result:.4f}", marker='x')
+        plt.plot(x_vals, y_vals, label=f"f(x) = {expr}", color="blue")
+        plt.axhline(0, color="black", linewidth=0.5)
+        plt.scatter(p_list, f_p_list, color="red", label="f(p_n)")
+        plt.scatter(
+            [result],
+            [expr_f(result)],
+            color="green",
+            label=f"Root ≈ {result:.4f}",
+            marker="x",
+        )
         plt.xlabel("x")
         plt.ylabel("f(x)")
         plt.title("Bisection Method")
@@ -175,7 +264,16 @@ def bisection(*, a: float, b: float, function: str, criterion: str = "function",
 
 
 @arguably.command
-def newton(*, estimate: float, function: str, criterion: str = "function", tolerance: float = 0.001, max_iter: int = 100, v: bool = False, p: bool = False):
+def newton(
+    *,
+    estimate: float,
+    function: str,
+    criterion: str = "function",
+    tolerance: float = 0.001,
+    max_iter: int = 100,
+    v: bool = False,
+    p: bool = False,
+):
     """
     Approximates the root of the equation `f` using the Newton-Raphson method.
 
@@ -191,14 +289,28 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
 
     console = Console()
 
-    x = smp.symbols('x')
+    x = smp.symbols("x")
     expr = smp.sympify(function)
     expr_derivative = expr.diff(x)
     expr_f = smp.lambdify([x], expr)
     expr_derivative_f = smp.lambdify([x], expr_derivative)
 
     # REVIEW variable names
-    p_n_one, f_p_n_one, f_deriv_p_n_one, f_difference, p_n, f_p_n, epsilon = [], [], [], [], [], [], []
+    (
+        p_n_one,
+        f_p_n_one,
+        f_deriv_p_n_one,
+        f_difference,
+        p_n,
+        f_p_n,
+    ) = (
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+    )
 
     # initial function calls
     f_e = expr_f(estimate)
@@ -217,8 +329,10 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
     n_iter = 0
     match criterion:
         case "absolute":
-            while np.abs(current_estimate - estimate) > tolerance and n_iter <= max_iter:
-                estimate = current_estimate # Previous estimate
+            while (
+                np.abs(current_estimate - estimate) > tolerance and n_iter <= max_iter
+            ):
+                estimate = current_estimate  # Previous estimate
 
                 f_e = expr_f(estimate)
                 f_derivative_e = expr_derivative_f(estimate)
@@ -235,11 +349,13 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
                     p_n.append(current_estimate)
                     f_p_n.append(np.abs(current_estimate - estimate))
 
-                    
-
         case "relative":
-            while np.abs(current_estimate - estimate) / np.abs(current_estimate) > tolerance and n_iter <= max_iter:
-                estimate = current_estimate # Previous estimate
+            while (
+                np.abs(current_estimate - estimate) / np.abs(current_estimate)
+                > tolerance
+                and n_iter <= max_iter
+            ):
+                estimate = current_estimate  # Previous estimate
 
                 f_e = expr_f(estimate)
                 f_derivative_e = expr_derivative_f(estimate)
@@ -254,7 +370,9 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
                     f_deriv_p_n_one.append(f_derivative_e)
                     f_difference.append(f_e / f_derivative_e)
                     p_n.append(current_estimate)
-                    f_p_n.append(np.abs(current_estimate - estimate) / np.abs(current_estimate))
+                    f_p_n.append(
+                        np.abs(current_estimate - estimate) / np.abs(current_estimate)
+                    )
 
         case "function":
             while np.abs(expr_f(current_estimate)) > tolerance and n_iter <= max_iter:
@@ -275,7 +393,7 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
                     p_n.append(current_estimate)
                     f_p_n.append(expr_f(current_estimate))
 
-    result = current_estimate # for readability
+    result = current_estimate  # for readability
 
     if v:
         # Detailed output
@@ -299,7 +417,7 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
                 f"{f_deriv_p_n_one[i]:.9f}",
                 f"{f_difference[i]:.9f}",
                 f"{p_n[i]:.9f}",
-                f"{f_p_n[i]:.9f}"
+                f"{f_p_n[i]:.9f}",
             )
 
         console.print(table)
@@ -316,12 +434,13 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
 
         console.print(f"[bold green]f'(x) = [/bold green]{expr_derivative}")
 
-        pno = smp.symbols('p_n-1')
-        console.print(f"\n[bold green]p_n = [/bold green] p_n-1 - ({expr.subs(x, pno)} / {expr_derivative.subs(x, pno)})")
+        pno = smp.symbols("p_n-1")
+        console.print(
+            f"\n[bold green]p_n = [/bold green] p_n-1 - ({expr.subs(x, pno)} / {expr_derivative.subs(x, pno)})"
+        )
 
-        console.print(f"[bold magenta]ε: [/bold magenta]{f_p_n[-1]:.9f}")
-        console.print(f"[bold magenta]Root: [/bold magenta]{result:.9f}")
-
+        console.print(f"[bold magenta]ε: [/bold magenta]{f_p_n[-1]:.9g}")
+        console.print(f"[bold magenta]Root: [/bold magenta]{result:.9g}")
 
     else:
         console.print(f"[bold magenta]Result: [/bold magenta]{result}")
@@ -331,10 +450,16 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
         x_vals = np.linspace(current_estimate - 5, current_estimate + 5, 400)
         y_vals = expr_f(x_vals)
 
-        plt.plot(x_vals, y_vals, label=f"f(x) = {expr}", color='blue')
-        plt.axhline(0, color='black', linewidth=0.5)
-        plt.scatter(p_n_one, f_p_n_one, color='red', label="Estimates")
-        plt.scatter([result], [expr_f(result)], color='green', label=f"Root ≈ {result:.4f}", marker='x')
+        plt.plot(x_vals, y_vals, label=f"f(x) = {expr}", color="blue")
+        plt.axhline(0, color="black", linewidth=0.5)
+        plt.scatter(p_n_one, f_p_n_one, color="red", label="Estimates")
+        plt.scatter(
+            [result],
+            [expr_f(result)],
+            color="green",
+            label=f"Root ≈ {result:.4f}",
+            marker="x",
+        )
         plt.xlabel("x")
         plt.ylabel("f(x)")
         plt.title("Newton-Raphson Method")
@@ -343,9 +468,10 @@ def newton(*, estimate: float, function: str, criterion: str = "function", toler
         plt.show()
 
 
-
 @arguably.command
-def lagrange(*, xs: list[float], y: list[float], r: float, v: bool = False, p: bool = False):
+def lagrange(
+    *, xs: list[float], y: list[float], r: float, v: bool = False, p: bool = False
+):
     """
     Computes the Lagrange Interpolating estimation for a given point `r`.
 
@@ -362,42 +488,51 @@ def lagrange(*, xs: list[float], y: list[float], r: float, v: bool = False, p: b
     console = Console()
 
     n = len(xs)
-    x = smp.symbols("x", real=True) # Symbolic variable for x
+    x = smp.symbols("x", real=True)  # Symbolic variable for x
     y = [smp.Float(f) for f in y]  # Convert y-values to sympy floats
-    px, l_full, l_rational = [], [], []  # Initialize lists for terms and Lagrange factors
-
+    px, l_full, l_rational = (
+        [],
+        [],
+        [],
+    )  # Initialize lists for terms and Lagrange factors
 
     for i in range(n):
-        l = [] # Holds Lagrange factors for each i
+        l = []  # Holds Lagrange factors for each i
 
         if v:
-            console.print(f"\n[bold cyan]Calculating Lagrange factor for i = {i}[/bold cyan]")
+            console.print(
+                f"\n[bold cyan]Calculating Lagrange factor for i = {i}[/bold cyan]"
+            )
 
         # Calculate Lagrange factors (L_i) for each x[i]
         # \ell_i(x) = \prod_{\substack{0 \leq j \leq n \\ j \neq i}} \frac{x - x_j}{x_i - x_j}
         for j in range(n):
             if xs[j] == xs[i]:
                 continue
-            l_calc = (x - xs[j]) / (xs[i] - xs[j]) # Lagrange factor for each pair (i, j)
+            l_calc = (x - xs[j]) / (
+                xs[i] - xs[j]
+            )  # Lagrange factor for each pair (i, j)
 
             l.append(l_calc)
             l_full.append(l_calc)
             l_rational.append(smp.nsimplify(l_calc, rational=True))
 
             if v:
-                console.print(f"[bold green]L_{i}(x) (step {j}):[/bold green] "
-                              f"(x - {xs[j]}) / ({xs[i]} - {xs[j]}) = {l_calc} -> {smp.nsimplify(l_calc, rational=True)}")
+                console.print(
+                    f"[bold green]L_{i}(x) (step {j}):[/bold green] "
+                    f"(x - {xs[j]}) / ({xs[i]} - {xs[j]}) = {l_calc} -> {smp.nsimplify(l_calc, rational=True)}"
+                )
 
         term = y[i] * smp.prod(l)
         px.append(term)
 
         if v:
             console.print(
-                f"[bold yellow]Term for i = {i}: [/bold yellow]y[{i}] * L_{i}(x) = {y[i]} * {smp.prod(l)}")
-
+                f"[bold yellow]Term for i = {i}: [/bold yellow]y[{i}] * L_{i}(x) = {y[i]} * {smp.prod(l)}"
+            )
 
     # P(x) = \sum_{i=0}^{n} y_i \ell_i(x)
-    px = smp.Add(*px) # Sum all terms to get P(x)
+    px = smp.Add(*px)  # Sum all terms to get P(x)
 
     px_simplified = smp.simplify(px)
     px_rational = smp.nsimplify(px_simplified, rational=True)
@@ -435,9 +570,7 @@ def lagrange(*, xs: list[float], y: list[float], r: float, v: bool = False, p: b
 
         # Print simplified polynomial and result for P(x) at r
         console.print(f"[bold magenta]P(x)[/bold magenta] = {px_simplified}")
-        console.print(
-            f"[bold magenta]P(x) rational[/bold magenta] = {px_rational}"
-        )
+        console.print(f"[bold magenta]P(x) rational[/bold magenta] = {px_rational}")
         console.print(f"[bold magenta]P({r})[/bold magenta] = {result}")
 
     else:
@@ -448,18 +581,21 @@ def lagrange(*, xs: list[float], y: list[float], r: float, v: bool = False, p: b
     # Plot for data points and regression line
     if p:
         x_line = np.linspace(np.min(xs), np.max(xs), 100)
-        px_f = smp.lambdify([x], px_rational, 'numpy')
+        px_f = smp.lambdify([x], px_rational, "numpy")
         y_line = px_f(x_line)
 
-        plt.plot(x_line, y_line, label=px_rational, color='blue')
-        plt.scatter(xs, y, color='red', label="Data Points")
-        plt.scatter([r], [result], color='green', label=f"Estimate at x={r}", marker='^')
+        plt.plot(x_line, y_line, label=px_rational, color="blue")
+        plt.scatter(xs, y, color="red", label="Data Points")
+        plt.scatter(
+            [r], [result], color="green", label=f"Estimate at x={r}", marker="^"
+        )
         plt.xlabel("x")
         plt.ylabel("y")
         plt.title("Lagrange Interpolation")
         plt.legend()
         plt.grid(True)
         plt.show()
+
 
 @arguably.command
 def lsm(*, xs: list[float], y: list[float], r: float, v: bool = False, p: bool = False):
@@ -475,7 +611,7 @@ def lsm(*, xs: list[float], y: list[float], r: float, v: bool = False, p: bool =
     """
 
     if len(xs) == 1 or len(y) == 1:
-        error(f"List length is 1") # TODO Improve error message...
+        error(f"List length is 1")  # TODO Improve error message...
 
     console = Console()
 
@@ -550,9 +686,11 @@ def lsm(*, xs: list[float], y: list[float], r: float, v: bool = False, p: bool =
         x_line = np.linspace(np.min(xs), np.max(xs), 100)
         y_line = m * x_line + b
 
-        plt.plot(x_line, y_line, label="Regression Line", color='blue')
-        plt.scatter(xs, y, color='red', label="Data Points")
-        plt.scatter([r], [result], color='green', label=f"Estimate at x={r}", marker='^')
+        plt.plot(x_line, y_line, label="Regression Line", color="blue")
+        plt.scatter(xs, y, color="red", label="Data Points")
+        plt.scatter(
+            [r], [result], color="green", label=f"Estimate at x={r}", marker="^"
+        )
         plt.xlabel("x")
         plt.ylabel("y")
         plt.title("Least Squares Regression")
@@ -563,3 +701,8 @@ def lsm(*, xs: list[float], y: list[float], r: float, v: bool = False, p: bool =
 
 if __name__ == "__main__":
     arguably.run()
+
+# Emacs stuff
+# Local Variables:
+# jinx-languages: "en_US"
+# End:
