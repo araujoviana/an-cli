@@ -17,15 +17,65 @@ def error(message: str):
     exit(1)
 
 
-""" TODO 
+""" TODO
 
-4. Derivadas e taxas de variação
-5. Aprox linear e quadrática
+4. Derivatives and rates of change
+5. Linear and quadratic approximation
 
-6. Método baseado em quadratura
-7. Método baseado em trapézio
-8. Método baseado em simpson
+6. Quadrature-based method
+7. Trapezoidal-based method
+8. Simpson-based method
 """
+
+
+@arguably.command
+def simpson(
+    *,
+    a: float,
+    b: float,
+    function: str,
+    v: bool = False,
+):
+    """
+    Finds an approximation of the integral of the function `f`.
+
+    Args:
+      a: [-a/] starting estimate
+      b: [-b/] ending estimate
+      function: [-f/--function] function to derive
+      v: [-v/--verbose] print calculation steps in detail
+    """
+
+    console = Console()
+    x = smp.symbols("x")
+
+    expr = smp.sympify(function)
+    expr_f = smp.lambdify([x], expr)
+
+    f_a = expr_f(a)
+    f_b = expr_f(b)
+    f_mid = expr_f((a + b) / 2)
+    simpson_rule = ((b - a) / 6) * (f_a + 4 * f_mid + f_b)
+
+    result = simpson_rule
+
+    if v:
+        console.print("\n")
+        console.rule("[bold white]DETAILED RESULTS[/bold white]")
+
+        console.print(f"[bold green]f({a}) = [/bold green]{f_a}")
+        console.print(f"[bold green]f(({a} + {b}) / 2) = [/bold green]{f_mid}")
+        console.print(f"[bold green]f({b}) = [/bold green]{f_b}")
+
+        console.print(f"[bold cyan]Applying the formula:[/bold cyan]")
+        console.print(
+            f"((b - a) / 6) * (f(a) + 4 * f((a + b) / 2) + f(b)) = {((b - a) / 6)} * ({f_a} + 4 * {f_mid} + {f_b})"
+        )
+
+        console.print(f"[bold magenta]Result: [/bold magenta]{result:.9g}")
+
+    else:
+        console.print(f"[bold magenta]Result: [/bold magenta]{result:.9g}")
 
 
 # REVIEW bad grammar @ docstring
@@ -39,7 +89,7 @@ def differentiate(
     v: bool = False,
 ):
     """
-    Finds an approximation of the first derivative of a number `x`
+    Finds an approximation of the first derivative of a number `x`.
 
     Args:
       X: [-x/] value to find the derivative
