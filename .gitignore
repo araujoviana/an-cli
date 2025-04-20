@@ -2,4 +2,5 @@ dist/
 .venv/
 an_cli.egg-info/
 uv.lock
+uv.lock/
 .idea/
