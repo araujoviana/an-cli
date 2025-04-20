@@ -2,6 +2,7 @@
 dist/
 .venv/
 an_cli.egg-info/
+build/
 
 # Ignore lock files
 uv.lock/
