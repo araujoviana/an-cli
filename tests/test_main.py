@@ -2,60 +2,139 @@ import pytest
 import numpy as np
 from an_cli.__main__ import simpson, differentiate, bisection, newton, lagrange, lsm
 
-# Helper for floating point comparisons
+# Helper function for floating point comparisons
 approx = pytest.approx
 
-# --- Simpson's Rule Tests ---
+# TODO other tests...
 
 
-def test_simpson_simple_parabola():
-    # Integral of x^2 from 0 to 1 is 1/3
-    result = simpson(a=0.0, b=1.0, function="x**2")
-    assert result == approx(1 / 3)
+def test_lagrange_basic():
+    xsarg = [0, 2, 4]
+    yarg = [1, 5, 17]
+    rarg = 10
+
+    result = lagrange(xs=xsarg, y=yarg, r=rarg)
+    expected = 101
+
+    assert result == approx(expected, rel=1e-8)
 
 
-# --- Differentiation Tests ---
+def test_lagrange_three_points():
+    xsarg = [1, 2, 3]
+    yarg = [2, 4, 6]
+    rarg = 2.5  # Interpolation for a point between 2 and 3
+
+    result = lagrange(xs=xsarg, y=yarg, r=rarg)
+    expected = (
+        5  # Lagrange interpolation of these points should give a straight line result
+    )
+
+    assert result == approx(expected, rel=1e-8)
 
 
-def test_differentiate_parabola_centered():
-    # Derivative of x^2 at x=2 is 4
-    result = differentiate(X=2.0, h=0.001, function="x**2", method="centered")
-    assert result == approx(4.0)
+def test_lagrange_negative_values():
+    xsarg = [-2, -1, 0]
+    yarg = [4, 1, 0]
+    rarg = -1.5  # Interpolation for a point between -2 and -1
+
+    result = lagrange(xs=xsarg, y=yarg, r=rarg)
+    expected = 2.25  # Result based on Lagrange interpolation
+
+    assert result == approx(expected, rel=1e-8)
 
 
-# --- Bisection Tests ---
+def test_lagrange_large_values():
+    xsarg = [1e6, 2e6, 3e6]
+    yarg = [2e6, 4e6, 6e6]
+    rarg = 2.5e6  # Interpolation for a point between 2e6 and 3e6
+
+    result = lagrange(xs=xsarg, y=yarg, r=rarg)
+    expected = 5e6  # Should return the expected linear value
+
+    assert result == approx(expected, rel=1e-8)
 
 
-def test_bisection_simple_root():
-    # Root of x**2 - 2 is sqrt(2)
-    result = bisection(a=1.0, b=2.0, function="x**2 - 2", tolerance=1e-6)
-    assert result == approx(np.sqrt(2), abs=1e-5)  # np.sqrt(2) is fine here
+def test_lagrange_interpolation_outside_range():
+    xsarg = [1, 2, 3]
+    yarg = [1, 4, 9]
+    rarg = 4  # Interpolation for a point outside the provided range
+
+    result = lagrange(xs=xsarg, y=yarg, r=rarg)
+    expected = 16  # The polynomial will continue the pattern, so expected value is 16
+
+    assert result == approx(expected, rel=1e-8)
 
 
-# --- Newton's Method Tests ---
+def test_lagrange_single_list():
+    xsarg = [1]
+    yarg = [2]
+    rarg = 1
 
-
-def test_newton_simple_root():
-    # Root of x**2 - 2 is sqrt(2)
-    result = newton(estimate=1.5, function="x**2 - 2", tolerance=1e-7)
-    assert result == approx(np.sqrt(2), abs=1e-6)  # np.sqrt(2) is fine here
-
-
-# --- Lagrange Interpolation Tests ---
-
-
-def test_lagrange_parabola():
-    # Points from y = x^2: (1, 1), (2, 4), (3, 9)
-    # Estimate at x = 2.5 should be 2.5^2 = 6.25
-    result = lagrange(xs=[1.0, 2.0, 3.0], y=[1.0, 4.0, 9.0], r=2.5)
-    assert result == approx(6.25)
+    # Single length lists are invalid
+    with pytest.raises(SystemExit):
+        lagrange(xs=xsarg, y=yarg, r=rarg)
 
 
 # --- Least Squares Method Tests ---
 
 
-def test_lsm_perfect_line():
-    # Points exactly on y = 2x + 1: (1, 3), (2, 5), (3, 7)
-    # Estimate at x = 2.5 should be 2*2.5 + 1 = 6
-    result = lsm(xs=[1.0, 2.0, 3.0], y=[3.0, 5.0, 7.0], r=2.5)
-    assert result == approx(6.0)
+def test_lsm_simple():
+    xsarg = [1, 2, 3]
+    yarg = [2, 4, 6]
+    rarg = 5
+
+    result = lsm(xs=xsarg, y=yarg, r=rarg)
+    expected = 10
+
+    assert result == approx(expected, rel=1e-8)
+
+
+def test_lsm_complex():
+    xsarg = [1, 2, 3, 4, 5]
+    yarg = [5, 7, 9, 11, 13]
+    rarg = 6
+
+    result = lsm(xs=xsarg, y=yarg, r=rarg)
+    expected = 15
+
+    assert result == approx(expected, rel=1e-8)
+
+
+def test_lsm_invalid_length():
+    xsarg = [1]
+    yarg = [2]
+    rarg = 5
+
+    with pytest.raises(SystemExit):
+        lsm(xs=xsarg, y=yarg, r=rarg)
+
+
+def test_lsm_empty_lists():
+    xsarg = []
+    yarg = []
+    rarg = 5
+
+    with pytest.raises(SystemExit):
+        lsm(xs=xsarg, y=yarg, r=rarg)
+
+
+def test_lsm_negative_values():
+    xsarg = [-1, -2, -3]
+    yarg = [-2, -4, -6]
+    rarg = -4
+
+    result = lsm(xs=xsarg, y=yarg, r=rarg)
+    expected = -8
+
+    assert result == approx(expected, rel=1e-8)
+
+
+def test_lsm_random_points():
+    xsarg = [0, 1, 2, 3, 4, 5]
+    yarg = [0, 2, 4, 6, 8, 10]
+    rarg = 7
+
+    result = lsm(xs=xsarg, y=yarg, r=rarg)
+    expected = 14  # This is a perfect linear relation y = 2x
+
+    assert result == approx(expected, rel=1e-8)

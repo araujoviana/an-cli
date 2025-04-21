@@ -78,7 +78,7 @@ def simpson(
 
     else:
         console.print(result)
-        return result
+        return result  # Returning the result makes testing easier
 
 
 @arguably.command
@@ -475,92 +475,107 @@ def newton(
     f_at_estimate = numeric_function(estimate)
     f_derivative_at_estimate = numeric_derivative(estimate)
 
-    current_estimate = estimate - (f_at_estimate / f_derivative_at_estimate)
+    try:
+        current_estimate = estimate - (f_at_estimate / f_derivative_at_estimate)
 
-    if verbose:
-        previous_estimates.append(estimate)
-        previous_function_values.append(f_at_estimate)
-        previous_derivative_values.append(f_derivative_at_estimate)
-        previous_differences.append(f_at_estimate / f_derivative_at_estimate)
-        current_estimates.append(current_estimate)
-        current_function_values.append(numeric_function(current_estimate))
+        if verbose:
+            previous_estimates.append(estimate)
+            previous_function_values.append(f_at_estimate)
+            previous_derivative_values.append(f_derivative_at_estimate)
+            previous_differences.append(f_at_estimate / f_derivative_at_estimate)
+            current_estimates.append(current_estimate)
+            current_function_values.append(numeric_function(current_estimate))
 
-    current_iter = 0
-    match criterion:
-        case "absolute":
-            while (
-                np.abs(current_estimate - estimate) > tolerance
-                and current_iter <= max_iter
-            ):
-                estimate = current_estimate  # Previous estimate
+        current_iter = 0
+        match criterion:
+            case "absolute":
+                while (
+                    np.abs(current_estimate - estimate) > tolerance
+                    and current_iter <= max_iter
+                ):
+                    estimate = current_estimate  # Previous estimate
 
-                f_at_estimate = numeric_function(estimate)
-                f_derivative_at_estimate = numeric_derivative(estimate)
+                    f_at_estimate = numeric_function(estimate)
+                    f_derivative_at_estimate = numeric_derivative(estimate)
 
-                current_estimate = estimate - (f_at_estimate / f_derivative_at_estimate)
-
-                current_iter += 1
-
-                if verbose:
-                    previous_estimates.append(estimate)
-                    previous_function_values.append(f_at_estimate)
-                    previous_derivative_values.append(f_derivative_at_estimate)
-                    previous_differences.append(
+                    current_estimate = estimate - (
                         f_at_estimate / f_derivative_at_estimate
                     )
-                    current_estimates.append(current_estimate)
-                    current_function_values.append(np.abs(current_estimate - estimate))
 
-        case "relative":
-            while (
-                np.abs(current_estimate - estimate) / np.abs(current_estimate)
-                > tolerance
-                and current_iter <= max_iter
-            ):
-                estimate = current_estimate  # Previous estimate
+                    current_iter += 1
 
-                f_at_estimate = numeric_function(estimate)
-                f_derivative_at_estimate = numeric_derivative(estimate)
+                    if verbose:
+                        previous_estimates.append(estimate)
+                        previous_function_values.append(f_at_estimate)
+                        previous_derivative_values.append(f_derivative_at_estimate)
+                        previous_differences.append(
+                            f_at_estimate / f_derivative_at_estimate
+                        )
+                        current_estimates.append(current_estimate)
+                        current_function_values.append(
+                            np.abs(current_estimate - estimate)
+                        )
 
-                current_estimate = estimate - (f_at_estimate / f_derivative_at_estimate)
+            case "relative":
+                while (
+                    np.abs(current_estimate - estimate) / np.abs(current_estimate)
+                    > tolerance
+                    and current_iter <= max_iter
+                ):
+                    estimate = current_estimate  # Previous estimate
 
-                current_iter += 1
+                    f_at_estimate = numeric_function(estimate)
+                    f_derivative_at_estimate = numeric_derivative(estimate)
 
-                if verbose:
-                    previous_estimates.append(estimate)
-                    previous_function_values.append(f_at_estimate)
-                    previous_derivative_values.append(f_derivative_at_estimate)
-                    previous_differences.append(
+                    current_estimate = estimate - (
                         f_at_estimate / f_derivative_at_estimate
                     )
-                    current_estimates.append(current_estimate)
-                    current_function_values.append(
-                        np.abs(current_estimate - estimate) / np.abs(current_estimate)
-                    )
 
-        case "function":
-            while (
-                np.abs(numeric_function(current_estimate)) > tolerance
-                and current_iter <= max_iter
-            ):
-                estimate = current_estimate  # Previous estimate
+                    current_iter += 1
 
-                f_at_estimate = numeric_function(estimate)
-                f_derivative_at_estimate = numeric_derivative(estimate)
+                    if verbose:
+                        previous_estimates.append(estimate)
+                        previous_function_values.append(f_at_estimate)
+                        previous_derivative_values.append(f_derivative_at_estimate)
+                        previous_differences.append(
+                            f_at_estimate / f_derivative_at_estimate
+                        )
+                        current_estimates.append(current_estimate)
+                        current_function_values.append(
+                            np.abs(current_estimate - estimate)
+                            / np.abs(current_estimate)
+                        )
 
-                current_estimate = estimate - (f_at_estimate / f_derivative_at_estimate)
+            case "function":
+                while (
+                    np.abs(numeric_function(current_estimate)) > tolerance
+                    and current_iter <= max_iter
+                ):
+                    estimate = current_estimate  # Previous estimate
 
-                current_iter += 1
+                    f_at_estimate = numeric_function(estimate)
+                    f_derivative_at_estimate = numeric_derivative(estimate)
 
-                if verbose:
-                    previous_estimates.append(estimate)
-                    previous_function_values.append(f_at_estimate)
-                    previous_derivative_values.append(f_derivative_at_estimate)
-                    previous_differences.append(
+                    current_estimate = estimate - (
                         f_at_estimate / f_derivative_at_estimate
                     )
-                    current_estimates.append(current_estimate)
-                    current_function_values.append(numeric_function(current_estimate))
+
+                    current_iter += 1
+
+                    if verbose:
+                        previous_estimates.append(estimate)
+                        previous_function_values.append(f_at_estimate)
+                        previous_derivative_values.append(f_derivative_at_estimate)
+                        previous_differences.append(
+                            f_at_estimate / f_derivative_at_estimate
+                        )
+                        current_estimates.append(current_estimate)
+                        current_function_values.append(
+                            numeric_function(current_estimate)
+                        )
+
+    except ZeroDivisionError as e:
+        error(f"{e}.")
 
     result = current_estimate  # for readability
 
@@ -665,7 +680,7 @@ def lagrange(
       verbose: [-v/--verbose] print calculation steps in detail
       plot: [-p/--plot] plot points in matplotlib graph
     """
-    if len(xs) == 1 or len(y) == 1:
+    if len(xs) <= 1 or len(y) <= 1:
         error(f"List length cannot less or equal than 1.")
 
     console = Console()  # rich console
@@ -805,7 +820,7 @@ def lsm(
       plot: [-p/--plot] plot points in matplotlib graph
     """
 
-    if len(xs) == 1 or len(y) == 1:
+    if len(xs) <= 1 or len(y) <= 1:
         error(f"List length cannot be less or equal than 1.")
 
     console = Console()

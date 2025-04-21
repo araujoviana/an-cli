@@ -12,3 +12,6 @@ uv.lock/
 
 # Ignore temporary README files
 README.tmp.md
+
+
+__pycache__/
