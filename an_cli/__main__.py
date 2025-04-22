@@ -238,17 +238,28 @@ def bisection(
     except Exception as e:
         error(f"Could not create numerical function from '{symbolic_function}': {e}")
 
-    # HACK Placeholder values
-    symbolic_function = x_symb
-    numeric_function = lambda a: a
-
     previous_p = 0  # Keep track of the previous p_n for absolute/relative criteria
     f_at_p = 0  # Store f(p_n) for the table
     current_p = (a + b) / 2
 
-    a_values, b_values, p_values, f_p_values = [], [], [], []
+    (
+        a_values,
+        b_values,
+        f_a_values,
+        p_values,
+        f_p_values,
+    ) = (
+        [],
+        [],
+        [],
+        [],
+        [],
+    )
 
     iter_count = 0
+
+    if np.sign(numeric_function(a)) == np.sign(numeric_function(b)):
+        error("f(a) and f(b) must have opposite signs.")
 
     try:
         match criterion:
@@ -262,6 +273,7 @@ def bisection(
 
                     a_values.append(a)
                     b_values.append(b)
+                    f_a_values.append(f_a)
                     p_values.append(current_p)
                     f_p_values.append(f_at_p)
 
@@ -277,9 +289,7 @@ def bisection(
                 # Initialize p_n differently for the first iteration relative check
                 previous_p = current_p + 2 * tolerance  # Ensure first iteration runs
                 while (
-                    # REVIEW Avoid division by zero if root is near 0
-                    np.abs(current_p) > 1e-12
-                    and np.abs(current_p - previous_p) / np.abs(current_p) > tolerance
+                    np.abs(current_p - previous_p) / np.abs(current_p) > tolerance
                     and iter_count < max_iter
                 ):
                     previous_p = current_p
@@ -288,6 +298,7 @@ def bisection(
 
                     a_values.append(a)
                     b_values.append(b)
+                    f_a_values.append(f_a)
                     p_values.append(current_p)
                     f_p_values.append(f_at_p)
 
@@ -310,6 +321,7 @@ def bisection(
 
                     a_values.append(a)
                     b_values.append(b)
+                    f_a_values.append(f_a)
                     p_values.append(current_p)
                     f_p_values.append(f_at_p)
 
@@ -330,6 +342,7 @@ def bisection(
         f_at_final_p = numeric_function(current_p)
         a_values.append(a)
         b_values.append(b)
+        f_a_values.append(f_a)
         p_values.append(current_p)
         f_p_values.append(f_at_final_p)  # Use the f(p) of the final result
 
@@ -346,6 +359,7 @@ def bisection(
         table.add_column("n", style="cyan", justify="right")
         table.add_column("a_n", style="green", justify="right")
         table.add_column("b_n", style="magenta", justify="right")
+        table.add_column("f(a_n)", style="blue", justify="right")
         table.add_column("p_n", style="yellow", justify="right")
         table.add_column("f(p_n)", style="cyan", justify="right")
 
@@ -355,6 +369,7 @@ def bisection(
                 f"{i+1}",
                 f"{a_values[i]:.9f}",
                 f"{b_values[i]:.9f}",
+                f"{f_a_values[i]:.9f}",
                 f"{p_values[i]:.9f}",
                 f"{f_p_values[i]:.9f}",
             )
